@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stable Money — Smart Ticket System Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#06080D;color:#F0F2F5;min-height:100vh}
+button{font-family:inherit;cursor:pointer}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#2A3352;border-radius:4px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const C = {
+  bg:"#0A0E17", surface:"#131924", card:"#1A2133", border:"#2A3352",
+  teal:"#00D4AA", tealDark:"#00A888", tealBg:"rgba(0,212,170,0.08)",
+  amber:"#FFB020", amberBg:"rgba(255,176,32,0.08)",
+  red:"#FF4D4D", redBg:"rgba(255,77,77,0.08)",
+  green:"#34D399", greenBg:"rgba(52,211,153,0.08)",
+  white:"#F0F2F5", tp:"#E8ECF2", ts:"#8892A5", tm:"#5A6478",
+};
+
+function App() {
+  const [screen, setScreen] = useState("my_fds");
+  const [selectedFD, setSelectedFD] = useState(null);
+  const [selectedIssue, setSelectedIssue] = useState(null);
+  const [userNote, setUserNote] = useState("");
+  const [ticketId] = useState("SM-" + Math.floor(100000 + Math.random() * 900000));
+  const [showToast, setShowToast] = useState(false);
+
+  const fds = [
+    { id:1, bank:"Suryoday SF Bank", code:"SUR", amount:"2,50,000", tenure:"12 months", rate:"8.25%", status:"Active", maturity:"28 Jun 2027", color:"#2563EB", txnId:"RPY_8847291", bookDate:"28 Jun 2026, 3:42 PM", payStatus:"Confirmed (Razorpay)", daysSince:6 },
+    { id:2, bank:"Unity SF Bank", code:"UNI", amount:"1,00,000", tenure:"6 months", rate:"7.75%", status:"Active", maturity:"15 Jan 2027", color:"#16A34A", txnId:"RPY_7723456", bookDate:"15 Jul 2026, 11:20 AM", payStatus:"Confirmed (Razorpay)", daysSince:0 },
+    { id:3, bank:"Shivalik SF Bank", code:"SHV", amount:"50,000", tenure:"12 months", rate:"8.10%", status:"Certificate pending", maturity:"02 Mar 2027", color:"#D97706", txnId:"RPY_9923847", bookDate:"02 Mar 2026, 11:23 AM", payStatus:"Confirmed (Razorpay)", daysSince:125 },
+  ];
+
+  const issues = [
+    { id:1, icon:"📄", title:"FD certificate not received", desc:"Booked my FD but haven't received the certificate yet", tag:"Most common" },
+    { id:2, icon:"⏳", title:"Withdrawal taking longer than expected", desc:"Requested withdrawal but money hasn't reached my account" },
+    { id:3, icon:"💰", title:"Interest not credited as expected", desc:"Expected interest payout hasn't arrived or amount seems wrong" },
+    { id:4, icon:"🔄", title:"FD details seem incorrect", desc:"Tenure, rate, or amount showing differently than what I booked" },
+    { id:5, icon:"📱", title:"Can't find my FD in the app", desc:"Booked an FD but it's not showing in my Passbook" },
+    { id:6, icon:"❓", title:"Something else about this FD", desc:"Other issue not listed above" },
+  ];
+
+  const pastTickets = [
+    { id:"SM-281034", bank:"Suryoday SF Bank", amount:"₹2,50,000", issue:"Interest amount query", status:"Resolved", statusColor:C.green, days:"Resolved in 36 hrs" },
+    { id:"SM-276455", bank:"Unity SF Bank", amount:"₹1,00,000", issue:"Withdrawal timing query", status:"Resolved", statusColor:C.green, days:"Resolved in 18 hrs" },
+  ];
+
+  const navigate = (s) => setScreen(s);
+
+  const handleRaiseTicket = () => {
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+    navigate("ticket_created");
+  };
+
+  const getDaysSinceLabel = (fd) => {
+    if (!fd) return "";
+    if (fd.daysSince === 0) return "Today";
+    if (fd.daysSince === 1) return "1 day";
+    return fd.daysSince + " days";
+  };
+
+  return (
+    <div style={{padding:"20px 16px",maxWidth:440,margin:"0 auto",position:"relative"}}>
+      {showToast && (
+        <div style={{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",background:C.teal,color:C.bg,padding:"10px 20px",borderRadius:12,fontSize:13,fontWeight:600,zIndex:100,boxShadow:"0 8px 32px rgba(0,212,170,0.3)"}}>
+          Ticket raised successfully
+        </div>
+      )}
+
+      <div style={{background:C.bg,borderRadius:40,border:`2px solid ${C.border}`,padding:"48px 0 0",overflow:"hidden",boxShadow:"0 24px 80px rgba(0,0,0,0.6)",position:"relative"}}>
+        <div style={{position:"absolute",top:12,left:"50%",transform:"translateX(-50%)",width:120,height:28,borderRadius:14,background:"#000"}} />
+        <div style={{padding:"0 24px 8px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{color:C.ts,fontSize:12,fontWeight:600}}>9:41</span>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <svg width="16" height="12" viewBox="0 0 16 12"><rect x="0" y="3" width="3" height="9" rx="1" fill={C.tm}/><rect x="4.5" y="1.5" width="3" height="10.5" rx="1" fill={C.tm}/><rect x="9" y="0" width="3" height="12" rx="1" fill={C.ts}/><rect x="13.5" y="0" width="2.5" height="12" rx="1" fill={C.ts}/></svg>
+          </div>
+        </div>
+
+        <div style={{padding:"0 20px 20px",minHeight:600}}>
+          {screen === "my_fds" && <ScreenMyFDs fds={fds} onSelect={(fd) => {setSelectedFD(fd);navigate("select_issue");}} onTickets={() => navigate("all_tickets")} onFaq={() => navigate("faq")} />}
+          {screen === "select_issue" && <ScreenSelectIssue fd={selectedFD} issues={issues} selected={selectedIssue} onSelect={setSelectedIssue} onContinue={() => navigate("issue_detail")} onBack={() => navigate("my_fds")} />}
+          {screen === "issue_detail" && <ScreenIssueDetail fd={selectedFD} issue={issues.find(i=>i.id===selectedIssue)} selectedIssueId={selectedIssue} note={userNote} onNoteChange={setUserNote} onRaise={handleRaiseTicket} onBack={() => navigate("select_issue")} getDaysSinceLabel={getDaysSinceLabel} />}
+          {screen === "ticket_created" && <ScreenTicketCreated ticketId={ticketId} fd={selectedFD} issue={issues.find(i=>i.id===selectedIssue)} onTrack={() => navigate("ticket_status")} />}
+          {screen === "ticket_status" && <ScreenTicketStatus ticketId={ticketId} fd={selectedFD} issue={issues.find(i=>i.id===selectedIssue)} onBack={() => navigate("all_tickets")} />}
+          {screen === "all_tickets" && <ScreenAllTickets ticketId={ticketId} fd={selectedFD} issue={issues.find(i=>i.id===selectedIssue)} pastTickets={pastTickets} onSelect={() => navigate("ticket_status")} onBack={() => navigate("my_fds")} onNew={() => navigate("my_fds")} />}
+          {screen === "faq" && <ScreenFAQ onBack={() => navigate("my_fds")} onRaise={() => navigate("my_fds")} />}
+        </div>
+
+        <div style={{display:"flex",justifyContent:"space-around",padding:"10px 16px 20px",borderTop:`1px solid ${C.border}`,background:C.bg}}>
+          {[
+            {label:"Home",icon:"⌂",s:"my_fds"},
+            {label:"Invest",icon:"↗"},
+            {label:"Portfolio",icon:"◧"},
+            {label:"Support",icon:"◉",active:true,s:"my_fds"},
+            {label:"More",icon:"≡"},
+          ].map((item,i) => (
+            <div key={i} onClick={() => item.s && navigate(item.s)} style={{textAlign:"center",cursor:"pointer"}}>
+              <div style={{fontSize:18,color:item.active?C.teal:C.tm}}>{item.icon}</div>
+              <div style={{fontSize:10,marginTop:2,color:item.active?C.teal:C.tm,fontWeight:item.active?600:400}}>{item.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{textAlign:"center",padding:"24px 0 12px",color:C.tm,fontSize:11}}>
+        Stable Money — Smart Ticket System Prototype<br/>
+        Built for Airtribe PM Launchpad Case Study
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// SCREEN: MY FDs
+// ═══════════════════════════════════════
+function ScreenMyFDs({ fds, onSelect, onTickets, onFaq }) {
+  return (
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:20}}>
+        <span style={{color:C.white,fontSize:17,fontWeight:700}}>My fixed deposits</span>
+      </div>
+      <div style={{color:C.tm,fontSize:11,marginBottom:10,fontWeight:500,letterSpacing:"0.04em"}}>ACTIVE FDs</div>
+      {fds.map((fd,i) => (
+        <div key={fd.id} style={{background:C.card,borderRadius:12,padding:14,marginBottom:10,border:`1px solid ${fd.status==="Certificate pending"?C.amber:C.border}`,transition:"border-color 0.2s"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+            <div style={{width:36,height:36,borderRadius:8,background:`${fd.color}18`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <span style={{color:fd.color,fontSize:11,fontWeight:700}}>{fd.code}</span>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{color:C.white,fontSize:14,fontWeight:600}}>{fd.bank}</div>
+              <div style={{color:C.ts,fontSize:12}}>₹{fd.amount} · {fd.tenure} · {fd.rate}</div>
+            </div>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{display:"inline-flex",alignItems:"center",gap:4,background:fd.status==="Certificate pending"?C.amberBg:C.greenBg,padding:"2px 8px",borderRadius:12,fontSize:11,fontWeight:500,color:fd.status==="Certificate pending"?C.amber:C.green}}>
+              <div style={{width:5,height:5,borderRadius:3,background:fd.status==="Certificate pending"?C.amber:C.green}} />
+              {fd.status}
+            </span>
+            <button onClick={() => onSelect(fd)} style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${C.border}`,background:"transparent",color:C.teal,fontSize:12,fontWeight:500,transition:"all 0.2s"}}
+              onMouseEnter={e=>{e.target.style.background=C.tealBg;e.target.style.borderColor=C.teal}}
+              onMouseLeave={e=>{e.target.style.background="transparent";e.target.style.borderColor=C.border}}>
+              Need help?
+            </button>
+          </div>
+          {fd.status==="Certificate pending" && (
+            <div style={{marginTop:8,padding:"8px 10px",borderRadius:8,background:C.amberBg,border:`1px solid rgba(255,176,32,0.15)`,fontSize:12,color:C.amber,lineHeight:1.5}}>
+              Your FD certificate from {fd.bank} is still being processed. This usually takes 2-3 business days.
+            </div>
+          )}
+        </div>
+      ))}
+      <div style={{color:C.tm,fontSize:11,marginTop:16,marginBottom:10,fontWeight:500,letterSpacing:"0.04em"}}>QUICK ACTIONS</div>
+      <div style={{display:"flex",gap:8}}>
+        {[
+          {icon:"🎫",label:"My tickets",sub:"View all",action:onTickets},
+          {icon:"❓",label:"FAQs",sub:"Common answers",action:onFaq},
+          {icon:"📞",label:"Call us",sub:"Mon-Fri 10-7"},
+        ].map((item,i) => (
+          <div key={i} onClick={item.action} style={{flex:1,background:C.card,borderRadius:10,padding:12,textAlign:"center",border:`1px solid ${C.border}`,cursor:"pointer",transition:"background 0.2s"}}
+            onMouseEnter={e=>e.currentTarget.style.background="#1F2841"}
+            onMouseLeave={e=>e.currentTarget.style.background=C.card}>
+            <div style={{fontSize:20,marginBottom:4}}>{item.icon}</div>
+            <div style={{color:C.white,fontSize:12,fontWeight:500}}>{item.label}</div>
+            <div style={{color:C.tm,fontSize:11}}>{item.sub}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// SCREEN: SELECT ISSUE
+// ═══════════════════════════════════════
+function ScreenSelectIssue({ fd, issues, selected, onSelect, onContinue, onBack }) {
+  const [localSelected, setLocalSelected] = useState(selected || 1);
+  return (
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+        <span onClick={onBack} style={{color:C.tm,fontSize:20,cursor:"pointer"}}>←</span>
+        <span style={{color:C.white,fontSize:17,fontWeight:700}}>What's the issue?</span>
+      </div>
+      {fd && (
+        <div style={{background:C.card,borderRadius:10,padding:10,marginBottom:16,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:32,height:32,borderRadius:6,background:`${fd.color}18`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <span style={{color:fd.color,fontSize:10,fontWeight:700}}>{fd.code}</span>
+          </div>
+          <div>
+            <div style={{color:C.white,fontSize:13,fontWeight:600}}>{fd.bank}</div>
+            <div style={{color:C.ts,fontSize:11}}>₹{fd.amount} · {fd.tenure} · {fd.rate}</div>
+          </div>
+        </div>
+      )}
+      <div style={{color:C.tm,fontSize:11,marginBottom:10,fontWeight:500,letterSpacing:"0.04em"}}>SELECT YOUR ISSUE</div>
+      {issues.map((issue) => (
+        <div key={issue.id} onClick={() => {setLocalSelected(issue.id);onSelect(issue.id);}} style={{
+          background:localSelected===issue.id?C.tealBg:C.card,borderRadius:12,padding:"10px 12px",marginBottom:6,
+          border:`1px solid ${localSelected===issue.id?C.teal:C.border}`,cursor:"pointer",display:"flex",alignItems:"center",gap:10,transition:"all 0.2s",
+        }}>
+          <span style={{fontSize:18,flexShrink:0}}>{issue.icon}</span>
+          <div style={{flex:1}}>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <span style={{color:C.white,fontSize:13,fontWeight:600}}>{issue.title}</span>
+              {issue.tag && <span style={{fontSize:9,padding:"1px 6px",borderRadius:8,background:C.amberBg,color:C.amber,fontWeight:500}}>{issue.tag}</span>}
+            </div>
+            <div style={{color:C.ts,fontSize:11,marginTop:2}}>{issue.desc}</div>
+          </div>
+          <div style={{width:18,height:18,borderRadius:9,border:`2px solid ${localSelected===issue.id?C.teal:C.tm}`,background:localSelected===issue.id?C.teal:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.2s"}}>
+            {localSelected===issue.id && <span style={{color:C.bg,fontSize:11}}>✓</span>}
+          </div>
+        </div>
+      ))}
+      <button onClick={onContinue} style={{width:"100%",padding:14,borderRadius:12,border:"none",background:`linear-gradient(135deg,${C.teal},${C.tealDark})`,color:C.bg,fontSize:15,fontWeight:700,marginTop:10,transition:"opacity 0.2s"}}
+        onMouseEnter={e=>e.target.style.opacity="0.9"}
+        onMouseLeave={e=>e.target.style.opacity="1"}>
+        Continue
+      </button>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// SCREEN: ISSUE DETAIL
+// ═══════════════════════════════════════
+function ScreenIssueDetail({ fd, issue, selectedIssueId, note, onNoteChange, onRaise, onBack, getDaysSinceLabel }) {
+  const baseRows = [
+    {label:"Booking date",value:fd?.bookDate || "02 Mar 2026, 11:23 AM"},
+    {label:"Transaction ID",value:fd?.txnId || "RPY_9923847"},
+    {label:"Payment status",value:fd?.payStatus || "Confirmed (Razorpay)",vc:C.green},
+    {label:"Amount",value:`₹${fd?.amount || "50,000"}`},
+  ];
+
+  const issueSpecificRows = {
+    1: [{label:"FD status",value:fd?.status || "Certificate pending",vc:C.amber}],
+    2: [{label:"Withdrawal requested",value:"Pending"}],
+    3: [{label:"Expected payout",value:"As per booked rate"},{label:"Maturity date",value:fd?.maturity || "02 Mar 2027"}],
+    4: [{label:"Booked tenure",value:fd?.tenure || "12 months"},{label:"Booked rate",value:fd?.rate || "8.10%"}],
+    5: [],
+    6: [],
+  };
+
+  const rows = [...baseRows, ...(issueSpecificRows[selectedIssueId] || [])];
+
+  return (
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+        <span onClick={onBack} style={{color:C.tm,fontSize:20,cursor:"pointer"}}>←</span>
+        <span style={{color:C.white,fontSize:17,fontWeight:700}}>Tell us more</span>
+      </div>
+      <div style={{background:C.card,borderRadius:10,padding:12,marginBottom:16,border:`1px solid ${C.border}`}}>
+        <div style={{color:C.tm,fontSize:11,fontWeight:500,marginBottom:6,letterSpacing:"0.04em"}}>ISSUE</div>
+        <div style={{color:C.white,fontSize:14,fontWeight:600}}>{issue?.title || "FD certificate not received"}</div>
+        <div style={{color:C.ts,fontSize:12,marginTop:2}}>{fd?.bank} · ₹{fd?.amount} · {fd?.tenure}</div>
+      </div>
+      <div style={{color:C.tm,fontSize:11,fontWeight:500,marginBottom:6,letterSpacing:"0.04em"}}>AUTO-FILLED FROM YOUR RECORDS</div>
+      <div style={{background:C.card,borderRadius:10,padding:12,marginBottom:16,border:`1px solid ${C.border}`}}>
+        {rows.map((row,i) => (
+          <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:i<rows.length-1?`1px solid ${C.border}`:"none"}}>
+            <span style={{color:C.tm,fontSize:12}}>{row.label}</span>
+            <span style={{color:row.vc||C.white,fontSize:12,fontWeight:500}}>{row.value}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{color:C.tm,fontSize:11,fontWeight:500,marginBottom:6,letterSpacing:"0.04em"}}>YOUR INPUT (OPTIONAL)</div>
+      <textarea value={note} onChange={e=>onNoteChange(e.target.value)} placeholder="Any additional details you'd like to share..."
+        style={{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:12,color:C.white,fontSize:13,minHeight:70,resize:"vertical",fontFamily:"inherit",outline:"none"}} />
+      <div style={{background:C.card,borderRadius:10,padding:12,marginTop:12,marginBottom:12,border:`1px dashed ${C.border}`,textAlign:"center",cursor:"pointer",transition:"background 0.2s"}}
+        onMouseEnter={e=>e.currentTarget.style.background="#1F2841"}
+        onMouseLeave={e=>e.currentTarget.style.background=C.card}>
+        <span style={{color:C.tm,fontSize:13}}>📎 Attach screenshot (optional)</span>
+      </div>
+      <div style={{background:C.tealBg,borderRadius:10,padding:12,marginBottom:12,border:`1px solid rgba(0,212,170,0.15)`,fontSize:12,color:C.ts,lineHeight:1.6}}>
+        <span style={{color:C.teal,fontWeight:600}}>What happens next: </span>
+        We'll check our records and reach out to {fd?.bank || "the bank"} on your behalf. You'll receive an update within 48 hours with findings and next steps.
+      </div>
+      <button onClick={onRaise} style={{width:"100%",padding:14,borderRadius:12,border:"none",background:`linear-gradient(135deg,${C.teal},${C.tealDark})`,color:C.bg,fontSize:15,fontWeight:700,transition:"opacity 0.2s"}}
+        onMouseEnter={e=>e.target.style.opacity="0.9"}
+        onMouseLeave={e=>e.target.style.opacity="1"}>
+        Raise ticket
+      </button>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// SCREEN: TICKET CREATED
+// ═══════════════════════════════════════
+function ScreenTicketCreated({ ticketId, fd, issue, onTrack }) {
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    const t1 = setTimeout(() => setProgress(1), 800);
+    const t2 = setTimeout(() => setProgress(2), 1600);
+    return () => {clearTimeout(t1);clearTimeout(t2);};
+  }, []);
+
+  const steps = [
+    {text:"Check our booking records for your FD"},
+    {text:`Verify payment confirmation with Razorpay`},
+    {text:`Reach out to ${fd?.bank || "the bank"} for status`},
+    {text:"Update you with findings within 48 hours"},
+  ];
+
+  return (
+    <div>
+      <div style={{textAlign:"center",padding:"20px 0 24px"}}>
+        <div style={{width:60,height:60,borderRadius:30,background:C.tealBg,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px",border:`2px solid ${C.teal}`}}>
+          <span style={{color:C.teal,fontSize:30}}>✓</span>
+        </div>
+        <div style={{color:C.white,fontSize:18,fontWeight:700}}>Ticket raised</div>
+        <div style={{color:C.ts,fontSize:13,marginTop:4}}>We're looking into this for you</div>
+      </div>
+      <div style={{background:C.card,borderRadius:12,padding:16,marginBottom:16,border:`1px solid ${C.teal}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+          <div>
+            <div style={{color:C.tm,fontSize:11}}>TICKET ID</div>
+            <div style={{color:C.teal,fontSize:18,fontWeight:700}}>{ticketId}</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{color:C.tm,fontSize:11}}>STATUS</div>
+            <span style={{display:"inline-flex",alignItems:"center",gap:4,background:C.amberBg,padding:"3px 10px",borderRadius:12,color:C.amber,fontSize:12,fontWeight:500}}>
+              <div style={{width:6,height:6,borderRadius:3,background:C.amber}} />
+              Investigating
+            </span>
+          </div>
+        </div>
+        <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12}}>
+          {[
+            {l:"Issue",v:issue?.title || "FD certificate not received"},
+            {l:"FD",v:`${fd?.bank || "Shivalik SF Bank"} · ₹${fd?.amount || "50,000"}`},
+            {l:"Raised on",v:new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) + ", " + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})},
+            {l:"Expected update by",v:"Within 48 hours"},
+          ].map((r,i) => (
+            <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}>
+              <span style={{color:C.tm,fontSize:12}}>{r.l}</span>
+              <span style={{color:C.white,fontSize:12,fontWeight:500,textAlign:"right",maxWidth:"60%"}}>{r.v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{color:C.tm,fontSize:11,fontWeight:500,marginBottom:8,letterSpacing:"0.04em"}}>WHAT WE'LL DO</div>
+      {steps.map((step,i) => (
+        <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<3?`1px solid ${C.border}`:"none",transition:"opacity 0.3s",opacity:i<=progress+1?1:0.4}}>
+          <span style={{color:i<=progress?C.teal:C.tm,fontSize:14,fontWeight:700,width:18,textAlign:"center",transition:"color 0.3s"}}>{i<=progress?"✓":"◌"}</span>
+          <span style={{color:i<=progress?C.tp:C.ts,fontSize:13,transition:"color 0.3s"}}>{step.text}</span>
+        </div>
+      ))}
+      <div style={{background:C.card,borderRadius:10,padding:12,marginTop:16,border:`1px solid ${C.border}`,fontSize:12,color:C.ts,lineHeight:1.6}}>
+        <span style={{color:C.white,fontWeight:600}}>Ticket ID sent via SMS</span> to your registered mobile number. You can track this ticket anytime from Support → My tickets.
+      </div>
+      <button onClick={onTrack} style={{width:"100%",padding:12,borderRadius:12,border:`1px solid ${C.border}`,background:C.card,color:C.teal,fontSize:13,fontWeight:600,marginTop:12,transition:"background 0.2s"}}
+        onMouseEnter={e=>e.target.style.background="#1F2841"}
+        onMouseLeave={e=>e.target.style.background=C.card}>
+        Track this ticket →
+      </button>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// SCREEN: TICKET STATUS
+// ═══════════════════════════════════════
+function ScreenTicketStatus({ ticketId, fd, issue, onBack }) {
+  const bankPhones = {"Suryoday SF Bank":"1800-266-7711","Unity SF Bank":"1800-103-2526","Shivalik SF Bank":"1800-309-8892"};
+  const timeline = [
+    {time:"Today, 2:15 PM",title:"Ticket raised",detail:`${issue?.title || "FD certificate not received"} for ${fd?.bank || "Shivalik SF Bank"} FD`,status:"done"},
+    {time:"Today, 2:15 PM",title:"Records verified",detail:`Payment of ₹${fd?.amount || "50,000"} confirmed via Razorpay (${fd?.txnId || "RPY_9923847"}). FD booking request sent to bank successfully.`,status:"done"},
+    {time:"Today, 2:16 PM",title:"Bank contacted",detail:`Automated query sent to ${fd?.bank || "Shivalik SF Bank"} operations team requesting FD certificate status.`,status:"done"},
+    {time:"—",title:"Awaiting bank response",detail:`Waiting for ${fd?.bank || "Shivalik SF Bank"} to confirm. Expected within 24-48 hours.`,status:"current"},
+    {time:"—",title:"Resolution",detail:"We'll update you as soon as the bank responds with findings.",status:"pending"},
+  ];
+
+  return (
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+        <span onClick={onBack} style={{color:C.tm,fontSize:20,cursor:"pointer"}}>←</span>
+        <span style={{color:C.white,fontSize:17,fontWeight:700}}>Ticket {ticketId}</span>
+      </div>
+      <span style={{display:"inline-flex",alignItems:"center",gap:6,background:C.amberBg,padding:"5px 14px",borderRadius:20,marginBottom:16}}>
+        <div style={{width:8,height:8,borderRadius:4,background:C.amber}} />
+        <span style={{color:C.amber,fontSize:12,fontWeight:600}}>Awaiting bank response</span>
+      </span>
+      <div style={{color:C.tm,fontSize:11,fontWeight:500,marginBottom:10,letterSpacing:"0.04em"}}>RESOLUTION TIMELINE</div>
+      {timeline.map((step,i) => (
+        <div key={i} style={{display:"flex",gap:12,marginBottom:2}}>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:16}}>
+            <div style={{width:step.status==="current"?12:8,height:step.status==="current"?12:8,borderRadius:"50%",background:step.status==="done"?C.teal:step.status==="current"?C.amber:"transparent",border:step.status==="pending"?`2px solid ${C.tm}`:"none",boxShadow:step.status==="current"?`0 0 8px ${C.amber}`:"none",transition:"all 0.3s"}} />
+            {i<4 && <div style={{width:2,height:28,background:step.status!=="pending"?`${step.status==="done"?C.teal:C.amber}40`:C.border}} />}
+          </div>
+          <div style={{flex:1,paddingBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <span style={{color:step.status==="pending"?C.tm:C.white,fontSize:13,fontWeight:600}}>{step.title}</span>
+              <span style={{color:C.tm,fontSize:11}}>{step.time}</span>
+            </div>
+            <div style={{color:C.ts,fontSize:12,marginTop:2,lineHeight:1.5}}>{step.detail}</div>
+          </div>
+        </div>
+      ))}
+      <div style={{background:C.card,borderRadius:10,padding:12,marginTop:8,border:`1px solid ${C.border}`}}>
+        <div style={{color:C.tm,fontSize:11,fontWeight:500,marginBottom:6,letterSpacing:"0.04em"}}>NEED TO CONTACT THE BANK DIRECTLY?</div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{flex:1}}>
+            <div style={{color:C.white,fontSize:13,fontWeight:600}}>{fd?.bank || "Shivalik SF Bank"}</div>
+            <div style={{color:C.ts,fontSize:12}}>{bankPhones[fd?.bank] || "1800-309-8892"} (toll-free)</div>
+          </div>
+          <button style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.teal}`,background:"transparent",color:C.teal,fontSize:12,fontWeight:600}}>Call</button>
+        </div>
+        <div style={{color:C.tm,fontSize:11,marginTop:6}}>Quote your Transaction ID: {fd?.txnId || "RPY_9923847"}</div>
+      </div>
+      <button style={{width:"100%",padding:12,borderRadius:12,border:`1px solid ${C.border}`,background:C.card,color:C.teal,fontSize:13,fontWeight:600,marginTop:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"background 0.2s"}}
+        onMouseEnter={e=>e.target.style.background="#1F2841"}
+        onMouseLeave={e=>e.target.style.background=C.card}>
+        ✉ Send pre-filled email to bank
+      </button>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// SCREEN: ALL TICKETS
+// ═══════════════════════════════════════
+function ScreenAllTickets({ ticketId, fd, issue, pastTickets, onSelect, onBack, onNew }) {
+  const currentTicket = {
+    id:ticketId,
+    bank:fd?.bank || "Shivalik SF Bank",
+    amount:`₹${fd?.amount || "50,000"}`,
+    issue:issue?.title || "FD certificate not received",
+    status:"In progress",
+    statusColor:C.amber,
+    days:"Raised today",
+  };
+  const allTickets = [currentTicket, ...pastTickets];
+
+  return (
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+        <span onClick={onBack} style={{color:C.tm,fontSize:20,cursor:"pointer"}}>←</span>
+        <span style={{color:C.white,fontSize:17,fontWeight:700}}>My tickets</span>
+      </div>
+      <div style={{display:"flex",gap:10,marginBottom:20}}>
+        {[
+          {n:String(allTickets.length),label:"Total",bg:C.card},
+          {n:"1",label:"Open",bg:C.amberBg},
+          {n:String(pastTickets.length),label:"Resolved",bg:C.greenBg},
+        ].map((s,i) => (
+          <div key={i} style={{flex:1,background:s.bg,borderRadius:10,padding:"12px 10px",textAlign:"center",border:`1px solid ${C.border}`}}>
+            <div style={{color:C.white,fontSize:20,fontWeight:700}}>{s.n}</div>
+            <div style={{color:C.tm,fontSize:11}}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+      {allTickets.map((t,i) => (
+        <div key={i} onClick={i===0?onSelect:undefined} style={{background:C.card,borderRadius:12,padding:14,marginBottom:10,border:`1px solid ${C.border}`,cursor:i===0?"pointer":"default",transition:"background 0.2s"}}
+          onMouseEnter={e=>{if(i===0)e.currentTarget.style.background="#1F2841"}}
+          onMouseLeave={e=>{if(i===0)e.currentTarget.style.background=C.card}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <span style={{color:C.teal,fontSize:12,fontWeight:600}}>#{t.id}</span>
+            <span style={{display:"inline-flex",alignItems:"center",gap:4,background:t.status==="Resolved"?C.greenBg:C.amberBg,padding:"2px 10px",borderRadius:12,fontSize:11,fontWeight:500,color:t.statusColor}}>
+              <div style={{width:5,height:5,borderRadius:3,background:t.statusColor}} />
+              {t.status}
+            </span>
+          </div>
+          <div style={{color:C.white,fontSize:14,fontWeight:600}}>{t.issue}</div>
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}>
+            <span style={{color:C.ts,fontSize:12}}>{t.bank} · {t.amount}</span>
+            <span style={{color:C.tm,fontSize:11}}>{t.days}</span>
+          </div>
+        </div>
+      ))}
+      <div style={{background:C.tealBg,borderRadius:12,padding:14,marginTop:12,border:`1px solid rgba(0,212,170,0.15)`,textAlign:"center"}}>
+        <div style={{color:C.ts,fontSize:12}}>Average resolution time</div>
+        <div style={{color:C.teal,fontSize:24,fontWeight:700,marginTop:4}}>27 hours</div>
+        <div style={{color:C.tm,fontSize:11,marginTop:2}}>Across your resolved tickets</div>
+      </div>
+      <div style={{background:C.card,borderRadius:10,padding:12,marginTop:12,border:`1px solid ${C.border}`,fontSize:12,color:C.ts,lineHeight:1.6,textAlign:"center"}}>
+        Can't find your issue here?<br/>
+        <span onClick={onNew} style={{color:C.teal,fontWeight:600,cursor:"pointer"}}>Raise a new ticket</span> from your FD in Passbook
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// SCREEN: FAQ
+// ═══════════════════════════════════════
+function ScreenFAQ({ onBack, onRaise }) {
+  const [openId, setOpenId] = useState(null);
+
+  const categories = [
+    {
+      title: "Money and FD safety",
+      color: C.green,
+      bg: C.greenBg,
+      faqs: [
+        {
+          id: 1,
+          q: "My money was debited but FD is not showing in the app. Is my money safe?",
+          a: "Yes. Once your payment is confirmed by the payment gateway, your money has reached the partner bank. Sometimes the FD creation confirmation takes 1-3 business days to reflect in the app depending on the bank's processing time. You can check your payment status in Passbook — if it shows 'Payment Confirmed,' your money is with the bank. If it's been more than 3 days, raise a ticket and we'll check with the bank on your behalf.",
+          source: "Play Store, App Store"
+        },
+        {
+          id: 2,
+          q: "What happens to my FD if Stable Money shuts down?",
+          a: "Your FD is held directly with the partner bank, not with Stable Money. We are a distributor — we help you book the FD, but the deposit is in your name at the bank. Even if Stable Money were to stop operating, your FD would continue earning interest and mature normally. You can always contact the partner bank directly with your FD certificate number.",
+          source: "Vrid blog, App Store"
+        },
+        {
+          id: 3,
+          q: "Is my deposit insured? What is DICGC?",
+          a: "Bank FDs booked through Stable Money are insured up to ₹5 lakh per depositor per bank under DICGC (Deposit Insurance and Credit Guarantee Corporation), which is a subsidiary of RBI. This covers your principal and interest combined. Note: NBFC FDs (like Bajaj Finance, Shriram Finance) are NOT covered by DICGC — they are backed by the company's creditworthiness and rating instead.",
+          source: "Common user question"
+        },
+        {
+          id: 4,
+          q: "My partner bank merged with another bank. What happens to my FD?",
+          a: "When banks merge, all existing deposits are transferred to the acquiring bank. Your FD terms (rate, tenure, maturity date) remain unchanged. We recommend noting your FD certificate number and transaction ID from your Passbook. If you face any difficulty accessing your FD after a merger, raise a ticket and we'll coordinate with the new bank entity on your behalf.",
+          source: "App Store — NE SF Bank/SLICE merger"
+        },
+      ]
+    },
+    {
+      title: "Withdrawals and liquidity",
+      color: C.amber,
+      bg: C.amberBg,
+      faqs: [
+        {
+          id: 5,
+          q: "How long does withdrawal take? Is it really instant?",
+          a: "Withdrawal timelines depend on the partner bank. Suryoday SF Bank and Unity SF Bank support instant withdrawal (within minutes). For other banks, premature withdrawal typically takes 1-2 working days as it is processed by the bank's system. The withdrawal timeline for each bank is shown on the FD details page before you book.",
+          source: "Play Store — multiple reviews"
+        },
+        {
+          id: 6,
+          q: "Will I be penalized for breaking my FD before maturity?",
+          a: "Yes, most banks charge a premature withdrawal penalty — typically 0.5% to 1% reduction on the applicable interest rate. The exact penalty varies by bank and is shown in the FD terms at the time of booking. You can use the 'Break FD' calculator in the app to see exactly how much you'll receive after penalty before deciding to withdraw.",
+          source: "Common user question"
+        },
+      ]
+    },
+    {
+      title: "FD certificate and documents",
+      color: C.teal,
+      bg: C.tealBg,
+      faqs: [
+        {
+          id: 7,
+          q: "When will I receive my FD certificate?",
+          a: "FD certificates are issued by the partner bank, not by Stable Money. Most banks issue the certificate within 2-5 business days after booking. You can view the certificate in your Passbook once it's available. If it's been more than 5 business days, raise a ticket from your FD in Passbook and we'll follow up with the bank.",
+          source: "Play Store — most common complaint"
+        },
+        {
+          id: 8,
+          q: "I need Form 15G/15H to avoid TDS. How do I submit it?",
+          a: "Form 15G (for individuals below 60) or Form 15H (for senior citizens) must be submitted directly to the partner bank at the beginning of each financial year. Download the form from the bank's website or from the link in your Passbook, fill it, and email it to the bank's customer care. We recommend submitting by April 30 each year to ensure TDS is not deducted from your interest.",
+          source: "Play Store — user lost returns due to missed notification"
+        },
+      ]
+    },
+    {
+      title: "Payments and KYC",
+      color: "#2563EB",
+      bg: "rgba(37,99,235,0.08)",
+      faqs: [
+        {
+          id: 9,
+          q: "Which UPI apps can I use to pay?",
+          a: "Currently, FD payments can be made via PayTM UPI and Cred UPI. We are working on adding support for Google Pay, PhonePe, and bank app UPI. If your preferred UPI option is not available, you can use net banking as an alternative payment method.",
+          source: "StartupTalky review"
+        },
+        {
+          id: 10,
+          q: "My video KYC failed. What should I do?",
+          a: "Video KYC is conducted by the partner bank's team, not Stable Money. If the call drops or fails, you can retry from the same screen. Tips: use a stable internet connection, ensure good lighting, keep your PAN and Aadhaar handy, and use Chrome browser on Android. Many banks now support Aadhaar eKYC which doesn't require a video call — check if this option is available for your chosen bank.",
+          source: "Vrid blog, StartupTalky"
+        },
+        {
+          id: 11,
+          q: "Do I need to do KYC again for a second FD with a different bank?",
+          a: "Yes, each partner bank has its own KYC requirement. However, if you book another FD with the same bank where you've already completed KYC, you won't need to redo it. Your personal details from your first KYC are saved to speed up the process for subsequent bookings.",
+          source: "Common user question"
+        },
+      ]
+    },
+    {
+      title: "Support and complaints",
+      color: C.red,
+      bg: C.redBg,
+      faqs: [
+        {
+          id: 12,
+          q: "I raised a complaint but haven't heard back. What should I do?",
+          a: "If you raised your issue via email or phone, we recommend raising a formal ticket through the Support section in the app — this ensures your complaint is tracked with a ticket ID and timeline. You can check the status of your ticket anytime from Support → My Tickets. If your ticket hasn't been updated within 48 hours, the system will automatically escalate it.",
+          source: "Play Store — most frequent complaint"
+        },
+        {
+          id: 13,
+          q: "Stable Money says they're 'just an intermediary.' Who is responsible for my FD?",
+          a: "Your FD is a contract between you and the partner bank. Stable Money facilitates the booking process. For FD-related operations (interest payout, maturity, withdrawal), the bank is the executing party. However, when you raise a ticket with us, we actively follow up with the bank on your behalf and keep you updated. We also provide you with the bank's direct contact details and a pre-filled complaint template if you'd like to reach them directly.",
+          source: "App Store — gold tier user review"
+        },
+        {
+          id: 14,
+          q: "How do I contact the partner bank directly?",
+          a: "You can find the partner bank's toll-free helpline number on your FD details page in Passbook. When calling, quote your Transaction ID (shown in Passbook) for faster resolution. You can also use the 'Send pre-filled email to bank' option when tracking a ticket — this generates an email with all your FD details pre-populated so the bank can identify your deposit quickly.",
+          source: "Common user need"
+        },
+      ]
+    },
+    {
+      title: "Interest and returns",
+      color: "#7C3AED",
+      bg: "rgba(124,58,237,0.08)",
+      faqs: [
+        {
+          id: 15,
+          q: "When will I receive my interest? Why hasn't it been credited?",
+          a: "Interest payout timing depends on the option you chose at booking — cumulative (at maturity), quarterly, or monthly. For non-cumulative FDs, interest is credited by the partner bank on the scheduled date. If your interest payout is delayed beyond 3 working days from the expected date, raise a ticket and we'll check with the bank.",
+          source: "Play Store review"
+        },
+        {
+          id: 16,
+          q: "Why was TDS deducted from my FD interest?",
+          a: "Banks deduct TDS at 10% if your total interest income from FDs at that bank exceeds ₹50,000 in a financial year (₹1,00,000 for senior citizens, effective April 2025). If your total income is below the taxable limit, submit Form 15G/15H to the bank before April 30 to avoid TDS. TDS already deducted can be claimed back when you file your income tax return.",
+          source: "Common user question"
+        },
+      ]
+    },
+  ];
+
+  return (
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+        <span onClick={onBack} style={{color:C.tm,fontSize:20,cursor:"pointer"}}>←</span>
+        <span style={{color:C.white,fontSize:17,fontWeight:700}}>Frequently asked questions</span>
+      </div>
+
+      <div style={{background:C.tealBg,borderRadius:10,padding:12,marginBottom:16,border:`1px solid rgba(0,212,170,0.15)`,fontSize:12,color:C.ts,lineHeight:1.6}}>
+        <span style={{color:C.teal,fontWeight:600}}>Based on real user questions </span>
+        — answers to the most common concerns raised by Stable Money investors on Play Store, App Store, and community forums.
+      </div>
+
+      {categories.map((cat, ci) => (
+        <div key={ci} style={{marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+            <div style={{width:4,height:16,borderRadius:2,background:cat.color}} />
+            <span style={{color:C.white,fontSize:13,fontWeight:600}}>{cat.title}</span>
+            <span style={{color:C.tm,fontSize:11,marginLeft:"auto"}}>{cat.faqs.length} questions</span>
+          </div>
+
+          {cat.faqs.map((faq) => (
+            <div key={faq.id} style={{
+              background:C.card,borderRadius:10,marginBottom:6,
+              border:`1px solid ${openId===faq.id?cat.color+"40":C.border}`,
+              overflow:"hidden",transition:"border-color 0.2s",
+            }}>
+              <div onClick={() => setOpenId(openId===faq.id?null:faq.id)} style={{
+                padding:"12px 14px",cursor:"pointer",display:"flex",alignItems:"flex-start",gap:10,
+              }}>
+                <div style={{flex:1}}>
+                  <div style={{color:C.white,fontSize:13,fontWeight:500,lineHeight:1.5}}>{faq.q}</div>
+                </div>
+                <span style={{color:C.tm,fontSize:16,flexShrink:0,transition:"transform 0.2s",transform:openId===faq.id?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
+              </div>
+              {openId === faq.id && (
+                <div style={{padding:"0 14px 12px"}}>
+                  <div style={{color:C.ts,fontSize:12,lineHeight:1.7,paddingTop:8,borderTop:`1px solid ${C.border}`}}>
+                    {faq.a}
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:4,marginTop:8}}>
+                    <span style={{fontSize:10,color:C.tm}}>Source: {faq.source}</span>
+                  </div>
+                  <div style={{display:"flex",gap:8,marginTop:10}}>
+                    <button style={{flex:1,padding:"6px 10px",borderRadius:6,border:`1px solid ${C.border}`,background:"transparent",color:C.ts,fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}
+                      onClick={() => {/* helpful tracking */}}>
+                      👍 Helpful
+                    </button>
+                    <button onClick={onRaise} style={{flex:1,padding:"6px 10px",borderRadius:6,border:`1px solid ${C.border}`,background:"transparent",color:C.teal,fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                      Still need help? Raise ticket
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
+
+      <div style={{background:C.card,borderRadius:10,padding:14,marginTop:8,border:`1px solid ${C.border}`,textAlign:"center"}}>
+        <div style={{color:C.white,fontSize:13,fontWeight:500,marginBottom:4}}>Didn't find your answer?</div>
+        <div style={{color:C.ts,fontSize:12,marginBottom:10}}>Raise a ticket from your FD in Passbook and we'll look into it within 48 hours.</div>
+        <button onClick={onRaise} style={{padding:"10px 24px",borderRadius:10,border:"none",background:`linear-gradient(135deg,${C.teal},${C.tealDark})`,color:C.bg,fontSize:13,fontWeight:600,transition:"opacity 0.2s"}}
+          onMouseEnter={e=>e.target.style.opacity="0.9"}
+          onMouseLeave={e=>e.target.style.opacity="1"}>
+          Go to My FDs
+        </button>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
